@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+<metadata>
+	<Esri>
+		<MetaID SYNC="true"/>
+		<CreaDate SYNC="true"/>
+		<CreaTime SYNC="true"/>
+		<SyncOnce SYNC="true">TRUE</SyncOnce>
+		<ModDate SYNC="true">20190423</ModDate>
+		<ModTime SYNC="true">181309</ModTime>
+		<DataProperties><lineage><Process ToolSource="c:\program files\arcgis\pro\Resources\ArcToolbox\toolboxes\Data Management Tools.tbx\Rename" Date="20190423" Time="163424">Rename "C:\Users\mohd9788\Desktop\Indoors\Integration\Service Now.pyt" C:\Users\mohd9788\Desktop\Indoors\Integration\ServiceNow.pyt Toolbox</Process><Process ToolSource="c:\program files\arcgis\pro\Resources\ArcToolbox\toolboxes\Data Management Tools.tbx\Rename" Date="20190423" Time="181255">Rename C:\Users\mohd9788\Desktop\Indoors\Integration\ServiceNow.pyt "C:\Users\mohd9788\Desktop\Indoors\Integration\Service Now.pyt" Toolbox</Process><Process ToolSource="c:\program files\arcgis\pro\Resources\ArcToolbox\toolboxes\Data Management Tools.tbx\Rename" Date="20190423" Time="181309">Rename "C:\Users\mohd9788\Desktop\Indoors\Integration\Service Now.pyt" C:\Users\mohd9788\Desktop\Indoors\Integration\ServiceNow.pyt Toolbox</Process></lineage></DataProperties></Esri>
+	<toolbox name="ServiceNow" alias="ServiceNow">
+		<arcToolboxHelpPath>c:\program files\arcgis\pro\Resources\Help\gp</arcToolboxHelpPath>
+		<summary>The 
+ArcGIS Indoors toolbox contains tools to add necessary datasets, feature classes, tables, and configurations to host Indoors data in a geodatabase.</summary>
+		<toolsets>
+		</toolsets>
+	</toolbox>
+	<dataIdInfo>
+		<idCitation>
+			<resTitle sync="true">ServiceNow</resTitle>
+			<citRespParty>
+				<rpIndName/>
+				<rpOrgName>ESRI, Inc.</rpOrgName>
+				<rpPosName/>
+				<role>
+					<RoleCd>010</RoleCd>
+				</role>
+				<rpCntInfo>
+					<cntAddress>
+						<delPoint>380 New York Street</delPoint>
+						<city>Redlands</city>
+						<adminArea>California</adminArea>
+						<postCode>92373 - 8100</postCode>
+						<eMailAdd>info@esri.com</eMailAdd>
+						<country>United States</country>
+					</cntAddress>
+					<cntPhone>
+						<voiceNum>909-793-2853</voiceNum>
+						<faxNum>909-793-5953</faxNum>
+					</cntPhone>
+				</rpCntInfo>
+			</citRespParty>
+		</idCitation>
+		<idAbs>The 
+ArcGIS Indoors toolbox contains tools to add necessary datasets, feature classes, tables, and configurations to host Indoors data in a geodatabase.</idAbs>
+		<descKeys KeyTypCd="005">
+			<keyTyp>
+				<keyTyp>005</keyTyp>
+			</keyTyp>
+		</descKeys>
+		<resConst>
+			<Consts>
+				<useLimit/>
+			</Consts>
+		</resConst>
+	</dataIdInfo>
+	<distInfo>
+		<distributor>
+			<distorFormat>
+				<formatName sync="true">ArcToolbox Toolbox</formatName>
+			</distorFormat>
+		</distributor>
+	</distInfo>
+	<metainfo>
+		<metd Sync="TRUE"/>
+	</metainfo>
+	<mdDateSt Sync="TRUE"/>
+</metadata>
