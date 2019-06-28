@@ -1,0 +1,29 @@
+{
+  "name": "indoors-servicenow-feature-service",
+  "version": "1.0.0",
+  "description": "A ServiceNow provider for Koop",
+  "main": "index.js",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/Esri/indoors-servicenow-feature-service",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Esri/indoors-servicenow-feature-service.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Esri/indoors-servicenow-feature-service/issues"
+  },
+  "keywords": [
+    "indoors",
+    "koop",
+    "provider",
+    "ServiceNow"
+  ],
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "config": "^3.0.0",
+    "koop": "^3.10.1",
+    "request": "^2.79.0"
+  }
+}

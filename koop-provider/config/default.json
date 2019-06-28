@@ -1,0 +1,11 @@
+{
+  "servicenow": {
+    "url": "https://example.service-now.com",
+    "username": "",
+    "password": "",
+    "cacheTimeToLiveSeconds": 10,
+    "maxFeaturesToCache": 10000,
+    "idField": null,
+    "trackObjectIds": true
+  }
+}
