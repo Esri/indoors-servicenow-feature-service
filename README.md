@@ -26,9 +26,9 @@ This repo also provides steps to configure 311 button on ArcGIS Indoors app to l
   
 ## Instructions
   
-For ServiceNow location loader, see [Python Tool](Python%20Tool)
+For ServiceNow location loader, see the [python-tool](python-tool)
 
-For Koop provider for ServiceNow, see [koop-provider-servicenow](koop-provider-servicenow)
+For Koop provider for ServiceNow, see the [koop-provider](koop-provider)
 
 ## Resources
 - [ArcGIS Indoors Information model](https://pro.arcgis.com/en/pro-app/help/data/indoors/arcgis-indoors-information-model.htm)
