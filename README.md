@@ -40,7 +40,7 @@ For Koop provider for ServiceNow, see [koop-provider-servicenow](koop-provider-s
 Find a bug or want to request a new feature? Please let us know by submitting an issue.
 
 ## Contributing
-Anyone and everyone is welcome to contribute.
+Esri welcomes contributions from anyone and everyone. Please see our [guidelines for contributing](https://github.com/esri/contributing).
 
 ## Licensing
 Copyright 2019 Esri
