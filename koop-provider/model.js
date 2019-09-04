@@ -126,13 +126,13 @@ Model.prototype.getData = function (req, callback) {
     task.table = "incident";
     task.geojson.metadata.name = "ServiceNow Incidents";
     task.geojson.metadata.description = "ServiceNow Incidents";
-    task.geojson.metadata.displayField = "short_description";
+    task.geojson.metadata.displayField = "number";
     task.objectIdsPerSysId = OBJECTIDS_PER_SYSID_INCIDENT;
   } else if (reqid === "requests" || reqid === "sc_request") {
     task.table = "sc_request";
     task.geojson.metadata.name = "ServiceNow Requests";
     task.geojson.metadata.description = "ServiceNow Requests";
-    task.geojson.metadata.displayField = "short_description";
+    task.geojson.metadata.displayField = "number";
     task.objectIdsPerSysId = OBJECTIDS_PER_SYSID_REQUEST;
   }
   if (!task.table) {
@@ -259,9 +259,10 @@ function appendFeatureItems(task,records) {
 
         f = f.replace(/\./g,"_");
         if (v && typeof v === "object" && v.link) {
-          f = f + "_key";
-          v = v.value || "";
-          properties[f] = v;
+          // f = f + "_key";
+          // v = v.value || "";
+          // properties[f] = v;
+          properties[f] = "";
         } else {
           properties[f] = v;
           if (f === "location_name") {
