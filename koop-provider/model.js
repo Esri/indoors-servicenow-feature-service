@@ -141,18 +141,14 @@ Model.prototype.getData = function (req, callback) {
     return;
   }
 
-  const promise = new Promise((resolve,reject) => {
-    task.resolve = resolve;
-    task.reject = reject;
-    execute(task);
-  });
-  promise.then(() => {
+  execute(task).then(() => {
     let nFeatures = task.geojson.features.length;
     let nTotal = task.featureItems.length;
-    //let msg = "ServiceNow:"+task.table+" "+nFeatures+" (with location) out of "+nTotal;
-    //console.log(msg);
+    let msg = "ServiceNow:"+task.table+" "+nFeatures+" (with location) out of "+nTotal;
+    console.log(msg);
     callback(null,task.geojson);
   }).catch(ex => {
+    console.error("Model::getData failed",ex);
     callback(ex);
   });
 };
@@ -294,6 +290,16 @@ function collectFields(task,record) {
   const fieldNames = [], secondary = [];
   Object.keys(record).some(key => {
     fieldNames.push(key);
+    let info = task.fieldsByName[key];
+    if (info) {
+      if (info.supported) {
+        fieldNames.push(key);
+      } else {
+        console.log("Field type not supported",key,info.alias,info.internalType);
+      }
+    } else {
+      console.log("No schema info for field:",key);
+    }
     if (key === "location") {
       fieldNames.push("location.latitude");
       fieldNames.push("location.longitude");
@@ -313,33 +319,19 @@ function collectFields(task,record) {
 }
 
 function execute(task) {
-  let url = task.servicenowUrl;
-  if (!url.endsWith("/")) url += "/";
-  url += "api/now/table/" + task.table;
-  url += "?sysparm_limit=1&sysparm_offset=0";
-  const options = {
-    url: url,
-    auth: task.auth,
-    headers: {
-      "User-Agent": "request",
-      "Accept": "application/json"
-    }
-  };
-  request.get(options,(err,res,json) => {
-    if (err) {
-      task.reject(err);
-    } else if (json && json.error) {
-      console.log("Error querying ServiceNow table:",url);
-      console.error(json.error);
-      let msg = json.error.message || "Error querying table.";
-      task.reject(new Error(msg));
-    } else if (json && json.result && Array.isArray(json.result) && json.result.length > 0) {
-      collectFields(task,json.result[0]);
-      queryTable(task);
-    } else {
+  const promise = new Promise((resolve,reject) => {
+    readSchema(task).then(() => {
+      return readFirstRecord(task);
+    }).then(hasFirst => {
+      if (hasFirst) return queryTable(task);
+    }).then(() => {
       processFeatureItems(task);
-    }
+      resolve();
+    }).catch(ex => {
+      reject(ex);
+    })
   });
+  return promise;
 }
 
 function makeGeometry(task,record) {
@@ -374,49 +366,156 @@ function processFeatureItems(task) {
       task.geojson.features.push(featureItem.feature);
     }
   });
-  task.resolve();
 }
 
 function queryTable(task) {
-  let url = task.servicenowUrl;
-  if (!url.endsWith("/")) url += "/";
-  url += "api/now/table/" + task.table;
-  url += "?sysparm_limit=" + task.sysparm_limit;
-  url += "&sysparm_offset=" + task.sysparm_offset;
-  url += "&sysparm_fields=" + encodeURIComponent(task.sysparm_fields);
-  const options = {
-    url: url,
-    auth: task.auth,
-    headers: {
-      "User-Agent": "request",
-      "Accept": "application/json"
-    }
-  };
-  //console.log(url);
-  request.get(options,(err,res,json) => {
-    if (err) {
-      task.reject(err);
-    } else if (json && json.error) {
-      console.log("Error querying ServiceNow table:",url);
-      console.error(json.error);
-      let msg = json.error.message || "Error querying table.";
-      task.reject(new Error(msg));
-    } else if (json && json.result && Array.isArray(json.result) && json.result.length > 0) {
-      //console.log("json.result.length",json.result.length);
-      let len = json.result.length;
-      task.recordCount += len;
-      //console.log("records",len, task.recordCount);
-      appendFeatureItems(task,json.result);
-      if (task.recordCount < task.maxFeaturesToCache && len === task.sysparm_limit) {
-        task.sysparm_offset += len;
-        queryTable(task);
+  const promise = new Promise((resolve,reject) => {
+    let url = task.servicenowUrl;
+    if (!url.endsWith("/")) url += "/";
+    url += "api/now/table/" + task.table;
+    url += "?sysparm_limit=" + task.sysparm_limit;
+    url += "&sysparm_offset=" + task.sysparm_offset;
+    url += "&sysparm_fields=" + encodeURIComponent(task.sysparm_fields);
+    sendServiceNowGet(task,url).then(result => {
+      if (Array.isArray(result) && result.length > 0) {
+        let len = result.length;
+        task.recordCount += len;
+        appendFeatureItems(task,result);
+        if (task.recordCount < task.maxFeaturesToCache && len === task.sysparm_limit) {
+          task.sysparm_offset += len;
+          resolve(queryTable(task));
+        } else {
+          resolve();
+        }
       } else {
-        processFeatureItems(task);
+        resolve();
       }
-    } else {
-      processFeatureItems(task);
-    }
+    }).catch(ex => {
+      reject(ex);
+    });
   });
+  return promise;
+}
+
+function readFirstRecord(task) {
+  const promise = new Promise((resolve,reject) => {
+    let url = task.servicenowUrl;
+    if (!url.endsWith("/")) url += "/";
+    url += "api/now/table/" + task.table;
+    url += "?sysparm_limit=1&sysparm_offset=0";
+    sendServiceNowGet(task,url).then(result => {
+      let hasFirst = false;
+      if (Array.isArray(result) && result.length > 0) {
+        hasFirst = true;
+        collectFields(task,result[0]);
+      }
+      resolve(hasFirst);
+    }).catch(ex => {
+      reject(ex);
+    });
+  });
+  return promise;
+}
+
+function readSchema(task) {
+  const promise = new Promise((resolve,reject) => {
+    let url = task.servicenowUrl;
+    if (!url.endsWith("/")) url += "/";
+    url += "api/now/table/sys_dictionary";
+    url += "?sysparm_query=name="+task.table+"^ORname=task"; // ^ORname=location";
+    url += "&sysparm_fields=name,element,column_label,internal_type";
+    sendServiceNowGet(task,url).then(result => {
+      let fieldsByName = {};
+      if (Array.isArray(result)) {
+        result.forEach(row => {
+          let table = row.name;
+          let field = row.element;
+          let alias = row.column_label;
+          let internalType = row.internal_type && row.internal_type.value;
+          let info = {
+            table: table,
+            field: field,
+            alias: alias,
+            internalType: internalType,
+            supported: false
+          };
+          //if (row.name === "sys_tags") console.log("sys_tagssssssssssssssssssssssssssssssssssss")
+          fieldsByName[field]= info;
+          //console.log(field,"=",alias);
+          //console.log("\n\n\n",row)
+          //console.log(row.name,row.element,internalType);
+          // if (row.element === "sys_updated_on") {
+          //   console.log("\n\n\n",row)
+          // }
+          // if (row.internal_type && row.internal_tyle.value) {
+          //
+          // }
+          //console.log(row.name);
+          if (internalType === "glide_date_time") {
+            info.supported = true;
+          } else if (internalType === "string") {
+            info.supported = true;
+          } else if (internalType === "integer") {
+            info.supported = true;
+          } else if (internalType === "boolean") {
+            info.supported = true;
+          } else if (internalType === "GUID") {
+            info.supported = true;
+          } else if (internalType === "due_date") {
+            info.supported = true;
+          } else if (internalType === "sys_class_name") {
+          } else if (internalType === "domain_id") { // sys_domain
+          } else if (internalType === "domain_path") { // sys_domain_path
+          } else if (internalType === "reference") {
+          } else if (internalType === "collection") {
+          } else if (internalType === "glide_list") {
+          } else if (internalType === "glide_duration") {
+          } else if (internalType === "journal") {
+          } else if (internalType === "journal_list") {
+          } else if (internalType === "journal_input") {
+          } else if (internalType === "timer") {
+          } else if (internalType === "variables") {
+          } else if (internalType === "user_input") {
+          } else {
+            console.log(row.name,row.element,internalType);
+          }
+        });
+        //console.log(aliasesByFieldName);
+      }
+      task.fieldsByName = fieldsByName;
+      resolve();
+    }).catch(ex => {
+      reject(ex);
+    });
+  });
+  return promise;
+}
+
+function sendServiceNowGet(task,url) {
+  const promise = new Promise((resolve,reject) => {
+    const options = {
+      url: url,
+      auth: task.auth,
+      headers: {
+        "User-Agent": "request",
+        "Accept": "application/json"
+      }
+    };
+    //console.log(url);
+    request.get(options,(err,res,json) => {
+      if (err) {
+        reject(err);
+      } else if (json && json.error) {
+        console.log("Error querying ServiceNow table:",options.url);
+        console.error(json.error);
+        let msg = json.error.message || "Error querying table.";
+        reject(new Error(msg));
+      } else  {
+        resolve(json && json.result);
+      }
+    });
+  });
+  return promise;
 }
 
 module.exports = Model
