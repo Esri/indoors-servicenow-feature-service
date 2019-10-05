@@ -52,7 +52,7 @@ Model.prototype.createKey = function (req) {
 // req.params.method
 Model.prototype.getData = function (req, callback) {
   //console.log("req.params.layer",req.params.layer,req.params);
-  let v;
+  let v, renderer;
 
   let ttl = 600; // seconds
   v = config.servicenow.cacheTimeToLiveSeconds;
@@ -128,18 +128,76 @@ Model.prototype.getData = function (req, callback) {
     task.geojson.metadata.description = "ServiceNow Incidents";
     task.geojson.metadata.displayField = "number";
     task.objectIdsPerSysId = OBJECTIDS_PER_SYSID_INCIDENT;
+    renderer = config.servicenow.incidents && config.servicenow.incidents.renderer;
   } else if (reqid === "requests" || reqid === "sc_request") {
     task.table = "sc_request";
     task.geojson.metadata.name = "ServiceNow Requests";
     task.geojson.metadata.description = "ServiceNow Requests";
     task.geojson.metadata.displayField = "number";
     task.objectIdsPerSysId = OBJECTIDS_PER_SYSID_REQUEST;
+    renderer = config.servicenow.requests && config.servicenow.requests.renderer;
   }
   if (!task.table) {
     const msg = "Only the incident and request tables are supported.";
     callback(new Error(msg));
     return;
   }
+  if (renderer) task.geojson.metadata.renderer = renderer;
+
+  // works
+  // task.geojson.metadata.fields = [{
+  //   "name": "OBJECTID",
+  //   "type": "esriFieldTypeOID",
+  //   "alias": "OBJECTID",
+  //   "sqlType": "sqlTypeInteger",
+  //   "domain": null,
+  //   "defaultValue": null
+  // }, {
+  //   "name": "parent",
+  //   "type": "esriFieldTypeString",
+  //   "alias": "parent",
+  //   "sqlType": "sqlTypeOther",
+  //   "domain": null,
+  //   "defaultValue": null,
+  //   "length": 136
+  // }];
+
+  // doesn't work
+  // task.geojson.metadata.drawingInfo = {
+  //   "renderer": {
+  //       "type": "simple",
+  //       "symbol": {
+  //           "color": [25, 172, 128, 161],
+  //           "outline": {
+  //               "color": [190, 190, 190, 105],
+  //               "width": 0.5,
+  //               "type": "esriSLS",
+  //               "style": "esriSLSSolid"
+  //           },
+  //           "size": 7.5,
+  //           "type": "esriSMS",
+  //           "style": "esriSMSCircle"
+  //       }
+  //   },
+  //   "labelingInfo": null
+  // };
+
+  // works
+  // task.geojson.metadata.renderer = {
+  //   "type": "simple",
+  //   "symbol": {
+  //       "color": [25, 172, 128, 161],
+  //       "outline": {
+  //           "color": [190, 190, 190, 105],
+  //           "width": 0.5,
+  //           "type": "esriSLS",
+  //           "style": "esriSLSSolid"
+  //       },
+  //       "size": 7.5,
+  //       "type": "esriSMS",
+  //       "style": "esriSMSCircle"
+  //   }
+  // };
 
   execute(task).then(() => {
     let nFeatures = task.geojson.features.length;
@@ -225,6 +283,11 @@ function appendFeatureItems(task,records) {
       let v = record[key];
       let ok = true;
 
+      let info = task.fieldsByName[key];
+      if (info && info.internalType === "domain_id") {
+        console.log(info.internalType,key,typeof v,v);
+      }
+
       if (f === "location.name") {
         f = "location_name";
         v = loc;
@@ -295,10 +358,10 @@ function collectFields(task,record) {
       if (info.supported) {
         fieldNames.push(key);
       } else {
-        console.log("Field type not supported",key,info.alias,info.internalType);
+        //console.log("Field type not supported",key,info.alias,info.internalType);
       }
     } else {
-      console.log("No schema info for field:",key);
+      //console.log("No schema info for field:",key);
     }
     if (key === "location") {
       fieldNames.push("location.latitude");
@@ -332,6 +395,24 @@ function execute(task) {
     })
   });
   return promise;
+}
+
+function makeEsriField(name,alias,type) {
+  let field = {
+    "name": name,
+    "alias": alias,
+    "type": type,
+    "sqlType": "sqlTypeOther",
+    "domain": null,
+    "defaultValue": null
+  };
+  if (type === "esriFieldTypeString") {
+    field.length = 128; // TODO?
+  } else if (type === "esriFieldTypeDate") {
+    field.length = 36; // TODO?
+  }
+  // "esriFieldTypeDouble" location.longitude/latitude/elevation
+  return field;
 }
 
 function makeGeometry(task,record) {
@@ -425,6 +506,7 @@ function readSchema(task) {
     url += "?sysparm_query=name="+task.table+"^ORname=task"; // ^ORname=location";
     url += "&sysparm_fields=name,element,column_label,internal_type";
     sendServiceNowGet(task,url).then(result => {
+      if (!result) console.error("Unable to read schema from",url);
       let fieldsByName = {};
       if (Array.isArray(result)) {
         result.forEach(row => {
@@ -439,33 +521,35 @@ function readSchema(task) {
             internalType: internalType,
             supported: false
           };
-          //if (row.name === "sys_tags") console.log("sys_tagssssssssssssssssssssssssssssssssssss")
           fieldsByName[field]= info;
-          //console.log(field,"=",alias);
-          //console.log("\n\n\n",row)
-          //console.log(row.name,row.element,internalType);
-          // if (row.element === "sys_updated_on") {
-          //   console.log("\n\n\n",row)
-          // }
-          // if (row.internal_type && row.internal_tyle.value) {
-          //
-          // }
-          //console.log(row.name);
           if (internalType === "glide_date_time") {
             info.supported = true;
+            info.esriField = makeEsriField(field,alias,"esriFieldTypeDate");
           } else if (internalType === "string") {
             info.supported = true;
+            info.esriField = makeEsriField(field,alias,"esriFieldTypeString");
           } else if (internalType === "integer") {
             info.supported = true;
-          } else if (internalType === "boolean") {
-            info.supported = true;
+            info.esriField = makeEsriField(field,alias,"esriFieldTypeInteger");
           } else if (internalType === "GUID") {
             info.supported = true;
+            info.esriField = makeEsriField(field,alias,"esriFieldTypeString");
+          } else if (internalType === "sys_class_name") {
+            // values returned from the rest api are strings
+            info.supported = true;
+            info.esriField = makeEsriField(field,alias,"esriFieldTypeString");
+          } else if (internalType === "boolean") {
+            // TODO? values returned from the rest api are strings
+            info.supported = true;
+            info.esriField = makeEsriField(field,alias,"esriFieldTypeString");
           } else if (internalType === "due_date") {
             info.supported = true;
-          } else if (internalType === "sys_class_name") {
+            console.log("****",field,internalType);
+            
           } else if (internalType === "domain_id") { // sys_domain
+            // n/a
           } else if (internalType === "domain_path") { // sys_domain_path
+            console.log("****",field,internalType);
           } else if (internalType === "reference") {
           } else if (internalType === "collection") {
           } else if (internalType === "glide_list") {
@@ -503,6 +587,9 @@ function sendServiceNowGet(task,url) {
     };
     //console.log(url);
     request.get(options,(err,res,json) => {
+      //console.log("err",err)
+      //console.log("res",res)
+      //console.log("json",json)
       if (err) {
         reject(err);
       } else if (json && json.error) {
