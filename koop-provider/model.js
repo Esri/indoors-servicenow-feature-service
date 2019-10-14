@@ -146,65 +146,10 @@ Model.prototype.getData = function (req, callback) {
   }
   if (renderer) task.geojson.metadata.renderer = renderer;
 
-  // works
-  // task.geojson.metadata.fields = [{
-  //   "name": "OBJECTID",
-  //   "type": "esriFieldTypeOID",
-  //   "alias": "OBJECTID",
-  //   "sqlType": "sqlTypeInteger",
-  //   "domain": null,
-  //   "defaultValue": null
-  // }, {
-  //   "name": "parent",
-  //   "type": "esriFieldTypeString",
-  //   "alias": "parent",
-  //   "sqlType": "sqlTypeOther",
-  //   "domain": null,
-  //   "defaultValue": null,
-  //   "length": 136
-  // }];
-
-  // doesn't work
-  // task.geojson.metadata.drawingInfo = {
-  //   "renderer": {
-  //       "type": "simple",
-  //       "symbol": {
-  //           "color": [25, 172, 128, 161],
-  //           "outline": {
-  //               "color": [190, 190, 190, 105],
-  //               "width": 0.5,
-  //               "type": "esriSLS",
-  //               "style": "esriSLSSolid"
-  //           },
-  //           "size": 7.5,
-  //           "type": "esriSMS",
-  //           "style": "esriSMSCircle"
-  //       }
-  //   },
-  //   "labelingInfo": null
-  // };
-
-  // works
-  // task.geojson.metadata.renderer = {
-  //   "type": "simple",
-  //   "symbol": {
-  //       "color": [25, 172, 128, 161],
-  //       "outline": {
-  //           "color": [190, 190, 190, 105],
-  //           "width": 0.5,
-  //           "type": "esriSLS",
-  //           "style": "esriSLSSolid"
-  //       },
-  //       "size": 7.5,
-  //       "type": "esriSMS",
-  //       "style": "esriSMSCircle"
-  //   }
-  // };
-
   execute(task).then(() => {
     let nFeatures = task.geojson.features.length;
     let nTotal = task.featureItems.length;
-    let msg = "ServiceNow:"+task.table+" "+nFeatures+" (with location) out of "+nTotal;
+    //let msg = "ServiceNow:"+task.table+" "+nFeatures+" (with location) out of "+nTotal;
     //console.log(msg);
     callback(null,task.geojson);
   }).catch(ex => {
@@ -214,12 +159,6 @@ Model.prototype.getData = function (req, callback) {
 };
 
 function appendFeatureItems(task,records) {
-  // "sys_updated_on": "sys_created_on"
-  // const dateFields = ["sys_created_on","sys_updated_on","closed_at","opened_at",
-  //   "resolved_at","due_date"]
-  // const numericFields = ["location.latitude","location.longitude","state",
-  //   "impact","urgency","priority","severity","incident_state","sys_mod_count",
-  //   "reopen_count"];
   const codedValues = {
     "state": {
       1: "New",
@@ -288,19 +227,10 @@ function appendFeatureItems(task,records) {
     }
 
     Object.keys(record).forEach(key => {
-      //if (recordIdx === 0) console.log(key)
       let f = key;
       let v = record[key];
       let info = task.fieldsByName[key];
       let ok = true;
-
-      //if (f === "time_worked") console.log("time_worked",info.internalType,typeof v,v);
-
-      // let a = ["due_date"];
-      // let info = task.fieldsByName[key];
-      // if (info && a.indexOf(info.internalType) !== -1) {
-      //   console.log(info.internalType,key,typeof v,v);
-      // }
 
       if (f === "location.name") {
         f = "location_name";
@@ -311,21 +241,19 @@ function appendFeatureItems(task,records) {
         return;
       } else if (f === "priority") {
         v = Number(v);
-        //properties[f] = v;
         if (codedValues.priority.hasOwnProperty(v)) {
           v = v + " - " + codedValues.priority[v];
         } else {
-          v = "";
+          if (isNaN(v)) v = "";
         }
         properties["priority_label"] = v;
         return;
       } else if (f === "state") {
         v = Number(v);
-        //properties[f] = v;
         if (codedValues.state.hasOwnProperty(v)) {
           v = v + " - " + codedValues.state[v];
         } else {
-          v = "";
+          if (isNaN(v)) v = "";
         }
         properties["state_label"] = v;
         return;
@@ -334,6 +262,7 @@ function appendFeatureItems(task,records) {
       if (info && info.supported && info.esriField) {
         if (v === undefined) v = null;
         let t = info.internalType, et = info.esriField.type;
+
         if (et === "Integer" || et === "Double") {
           if (typeof v === "string") {
             v = v.trim();
@@ -345,6 +274,8 @@ function appendFeatureItems(task,records) {
           } else if (typeof v !== "number") {
             v = null;
           }
+          if (isNaN(v)) v = null;
+
         } else if (et === "Date") {
           if (typeof v === "string") {
             v = v.trim();
@@ -365,55 +296,13 @@ function appendFeatureItems(task,records) {
           }
         }
 
-        //if (f === "business_duration") console.log("        business_duration",t,v);
-
         properties[info.esriField.name] = v;
-
-        //if (info.esriField.name === "elevation") console.log("***********",v)
-        //if (info.esriField.name === "latitude") console.log("***********",v)
       }
-
-      // if (ok && v && typeof v === "object" && v.link) {
-      //   ok = false;
-      //   // f = f + "_key";
-      //   // v = v.value || "";
-      //   // properties[f] = v;
-      //   //properties[f] = "";
-      // }
-
-      // if (ok) {
-      //   f = f.replace(/\./g,"_");
-      //   properties[f] = v;
-      //   if (f === "location_name") {
-      //     properties["location_unit_name"] = locUnit;
-      //     properties["location_level_name"] = locLevel;
-      //     properties["location_facility_name"] = locFacility;
-      //   } else if (f === "state") {
-      //     properties["state_label"] = codedValues.state[v] || "";
-      //   } else if (f === "priority") {
-      //     properties["priority_label"] = codedValues.priority[v] || "";
-      //   }
-      // }
 
     });
 
-    // if (!properties.hasOwnProperty("business_stc")) {
-    //   console.log("No business_stc",properties)
-    // }
-
-    //console.log("OBJECTID",properties["OBJECTID"]);
-    //console.log("latitude",properties["latitude"]);
-    //
-
-    // if (!properties.OBJECTID) console.log("OBJECTID",properties.OBJECTID)
-    // if (!properties.elevation) properties.elevation = 1;
-    // if (!properties.child_incidents) properties.child_incidents = 1;
-    // if (!properties.hold_reason) properties.hold_reason = 1;
-    // if (!properties.order) properties.order = 1;
-    // if (!properties.reopen_count) properties.reopen_count = 1;
-    // if (!properties.time_worked) properties.time_worked = "2019-10-04T00:00:00Z";
-
     if (!properties.hasOwnProperty("elevation")) properties.elevation = null;
+
     const featureItem = {
       feature: {
         type: "Feature",
@@ -425,45 +314,10 @@ function appendFeatureItems(task,records) {
   });
 }
 
-// function collectFields(task,record) {
-//   const fieldNames = [], secondary = [];
-//   Object.keys(record).some(key => {
-//     fieldNames.push(key);
-//     let info = task.fieldsByName[key];
-//     if (info) {
-//       if (info.supported) {
-//         fieldNames.push(key);
-//       } else {
-//         //console.log("Field type not supported",key,info.alias,info.internalType);
-//       }
-//     } else {
-//       //console.log("No schema info for field:",key);
-//     }
-//     if (key === "location") {
-//       fieldNames.push("location.latitude");
-//       fieldNames.push("location.longitude");
-//       fieldNames.push("location.elevation");
-//       fieldNames.push("location.name");
-//       fieldNames.push("location.parent.name");
-//       fieldNames.push("location.parent.parent.name");
-//     } else if (key === "assigned_to") {
-//       fieldNames.push("assigned_to.name");
-//     } else if (key === "opened_by") {
-//       fieldNames.push("opened_by.name");
-//     } else if (key === "caller_id") {
-//       fieldNames.push("caller_id.name");
-//     }
-//   });
-//   //task.sysparm_fields = fieldNames.join(",");
-// }
-
 function execute(task) {
   const promise = new Promise((resolve,reject) => {
     readSchema(task).then(() => {
       if (task.sysparm_fields) return queryTable(task);
-    //   return readFirstRecord(task);
-    // }).then(hasFirst => {
-    //   if (hasFirst) return queryTable(task);
     }).then(() => {
       processFeatureItems(task);
       resolve();
@@ -486,23 +340,15 @@ function makeEsriField(name,alias,type,maxLength) {
     "nullable": true
   };
   if (type === "String") {
-    if (type)
-    field.length = 128; // TODO?
+    field.length = 128;
+    if (maxLength && maxLength > 0) field.length = maxLength;
   } else if (type === "Date") {
-    field.length = 36; // TODO?
+    field.length = 36;
   }
   return field;
 }
 
 function makeGeometry(task,record) {
-
-  // if (true) {
-  //   return {
-  //     type: "Point",
-  //     coordinates: [10,10,0]
-  //   };
-  // };
-
   let x = record["location.longitude"];
   let y = record["location.latitude"];
   let elevation = record["location.elevation"];
@@ -531,14 +377,6 @@ function makeGeometry(task,record) {
 function processFeatureItems(task) {
   task.featureItems.forEach(featureItem => {
     if (featureItem.feature.geometry) {
-      //console.log("OBJECTID",featureItem.feature.properties["OBJECTID"]);
-      //console.log("elevation",featureItem.feature.properties["elevation"]);
-      //console.log("child_incidents",featureItem.feature.properties["child_incidents"]);
-      //console.log("hold_reason",featureItem.feature.properties["hold_reason"]);
-      //console.log("order",featureItem.feature.properties["order"]);
-      //console.log("reopen_count",featureItem.feature.properties["reopen_count"]);
-      //console.log("time_worked",featureItem.feature.properties["time_worked"]);
-
       task.geojson.features.push(featureItem.feature);
     }
   });
@@ -573,26 +411,6 @@ function queryTable(task) {
   return promise;
 }
 
-// function readFirstRecord(task) {
-//   const promise = new Promise((resolve,reject) => {
-//     let url = task.servicenowUrl;
-//     if (!url.endsWith("/")) url += "/";
-//     url += "api/now/table/" + task.table;
-//     url += "?sysparm_limit=1&sysparm_offset=0";
-//     sendServiceNowGet(task,url).then(result => {
-//       let hasFirst = false;
-//       if (Array.isArray(result) && result.length > 0) {
-//         hasFirst = true;
-//         collectFields(task,result[0]);
-//       }
-//       resolve(hasFirst);
-//     }).catch(ex => {
-//       reject(ex);
-//     });
-//   });
-//   return promise;
-// }
-
 function readSchema(task) {
   let fields = [], fieldsByName = {};
   const addRef = (alias,name,type,esriName,esriType,fetch) => {
@@ -621,11 +439,9 @@ function readSchema(task) {
     if (!url.endsWith("/")) url += "/";
     url += "api/now/table/sys_dictionary";
     url += "?sysparm_query=name="+task.table+"^ORname=task"; // ^ORname=imp_location";
-    //url += "?sysparm_query=name="+task.table+"^ORname=task^ORname=imp_location";
-    //url += "&sysparm_fields=name,element,column_label,internal_type,max_length";
+    url += "&sysparm_fields=name,element,column_label,internal_type,max_length";
     sendServiceNowGet(task,url).then(result => {
       if (!result) console.error("Unable to read schema from",url);
-      //console.log(result)
       let esriStr = "String", esriDbl = "Double";
       if (Array.isArray(result)) {
         result.forEach(row => {
@@ -635,7 +451,6 @@ function readSchema(task) {
           let alias = row.column_label;
           let internalType = row.internal_type && row.internal_type.value;
           let maxLength = row.max_length;
-          //console.log(table,field,internalType,maxLength)
           let info = {
             table: table,
             field: field,
@@ -702,7 +517,6 @@ function readSchema(task) {
             info.esriField = makeEsriField(field,alias,"String",maxLength);
 
           } else if (internalType === "reference") {
-
             if (field === "location") {
               addRef(info.alias,field+".name","string",field+"_name",esriStr);
               addRef(null,field+".parent.name","string",field);
@@ -729,7 +543,6 @@ function readSchema(task) {
             }
 
           } else if (internalType === "domain_id") {
-            //console.log("Unsupported internal_type:",row.name,row.element,internalType);
           } else if (internalType === "collection") {
           } else if (internalType === "glide_duration") {
             // some samples for business_duration:
@@ -772,15 +585,6 @@ function readSchema(task) {
       task.fieldsByName = fieldsByName;
       task.sysparm_fields = fieldNames.join(",");
       task.geojson.metadata.fields = esriFields;
-      //console.log(task.sysparm_fields)
-      // esriFields.forEach(f => {
-      //   if (f.name === "latitude") {
-      //     console.log(f.name,f.type);
-      //     f.type = "Double"
-      //   }
-      // })
-      // console.log(esriFields)
-
       resolve();
     }).catch(ex => {
       reject(ex);
