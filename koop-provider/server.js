@@ -20,6 +20,10 @@ process.on('SIGTERM', () => process.exit(0))
 const Koop = require('koop')
 const koop = new Koop()
 
+// Custom authorization
+const auth = require('./auth/auth')
+koop.register(auth());
+
 // Install the Provider
 const provider = require('./')
 koop.register(provider)

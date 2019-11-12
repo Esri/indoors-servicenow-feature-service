@@ -3,6 +3,12 @@
     "url": "https://example.service-now.com",
     "username": "",
     "password": "",
+    "portalTokenAuthentication": {
+      "portalUrl": "",
+      "referer": "",
+      "tokenExpirationMinutes": 60,
+      "useHttp": false
+    },
     "cacheTimeToLiveSeconds": 10,
     "maxFeaturesToCache": 10000,
     "idField": null,
