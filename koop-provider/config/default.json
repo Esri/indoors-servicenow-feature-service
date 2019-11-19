@@ -5,9 +5,7 @@
     "password": "",
     "portalTokenAuthentication": {
       "portalUrl": "",
-      "referer": "",
-      "tokenExpirationMinutes": 60,
-      "useHttp": false
+      "tokenServicesUrl": ""
     },
     "cacheTimeToLiveSeconds": 10,
     "maxFeaturesToCache": 10000,

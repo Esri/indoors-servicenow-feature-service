@@ -1,19 +1,27 @@
 const config = require("config");
 const os = require("os");
 const request = require("request").defaults({gzip: true, json: true});
+const FeatureServer = require('featureserver')
 
 let _authOn = false;
 let _portalUrl;
 let _referer = os.hostname();
 let _tokenExpirationMinutes = 60;
+let _tokenServicesUrl;
 let _useHttp = false;
 
 function auth(options = {}) {
   let v;
+  let provider = options && options.provider;
+  let Controller = provider && provider.Controller;
 
+  _authOn = false;
   let authConfig = config.servicenow.portalTokenAuthentication;
   if (authConfig) {
     _portalUrl = checkPortalUrl(authConfig.portalUrl);
+
+    v = authConfig.tokenServicesUrl;
+    if (typeof v === "string" && v.length > 0) _tokenServicesUrl = v;
 
     v = authConfig.referer;
     if (typeof v === "string" && v.length > 0) _referer = v;
@@ -24,21 +32,40 @@ function auth(options = {}) {
     v = authConfig.useHttp;
     if (typeof v === "boolean") _useHttp = v;
 
-    if (_portalUrl) _authOn = true;
+    acceptUntrustedCertificates = false;
+    v = authConfig.acceptUntrustedCertificates;
+    if (typeof v === "boolean" && v) acceptUntrustedCertificates = true;
+
+    if (_portalUrl) {
+      _authOn = true;
+      if (provider && Controller) {
+        provider.routes.push({
+          path: provider.name + "/rest/info",
+          methods: ["get", "post"],
+          handler: "featureServerRestInfo"
+        });
+        Controller.prototype.featureServerRestInfo = featureServerRestInfo.bind(Controller);
+        if (_tokenServicesUrl && acceptUntrustedCertificates) {
+          // this is dangerous and should only be done in development mode
+          console.log("WARNING: portalTokenAuthentication.acceptUntrustedCertificates",true);
+          process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0";
+        }
+      }
+    }
+
   }
 
-  return {
-    type: "auth",
-    authenticationSpecification,
-    authenticate,
-    authorize
+  if (_authOn) {
+    return {
+      type: "auth",
+      authenticationSpecification,
+      authenticate,
+      authorize
+    }
   }
+
 }
 
-/**
- * Return "authenticationSpecification" object for use in output-services
- * @returns {object}
- */
 function authenticationSpecification () {
   return {
     useHttp: _useHttp
@@ -79,7 +106,49 @@ function authorize(req) {
   return promise;
 }
 
-function generateToken(username,password,referer) {
+function checkPortalUrl(url) {
+  if (typeof url === "string") {
+    url = url.trim();
+    if (url.substr(url.length - 1) === "/") {
+      url = url.substr(0, url.length - 1);
+    }
+    if (url.substr(url.length - 13) === "/sharing/rest") {
+      url = url.substr(0, url.length - 13);
+    }
+    if (url.length > 0) return url;
+  }
+  return null;
+}
+
+// /rest/json response
+function featureServerRestInfo(req, res) {
+
+   if (!_authOn) {
+     // default behavior from https://github.com/koopjs/koop-output-geoservices/blob/master/index.js
+     let authInfo = {}
+     let authSpec = this.model.authenticationSpecification
+     authInfo.isTokenBasedSecurity = true
+     // Use https by default, unless KOOP_AUTH_HTTP or authSpec.useHttp are defined and set to true
+     let protocol = (authSpec.useHttp === true || process.env.KOOP_AUTH_HTTP === 'true') ? 'http' : 'https'
+     authInfo.tokenServicesUrl = `${protocol}://${req.headers.host}${req.baseUrl}/${authSpec.provider}/tokens/`
+     FeatureServer.route(req, res, { authInfo })
+     return;
+   }
+
+   let tokenServicesUrl = _tokenServicesUrl;
+   if (!tokenServicesUrl) {
+     let protocol = (authSpec.useHttp === true || process.env.KOOP_AUTH_HTTP === 'true') ? 'http' : 'https'
+     tokenServicesUrl = `${protocol}://${req.headers.host}${req.baseUrl}/${authSpec.provider}/tokens/`
+   }
+   FeatureServer.route(req, res, {
+     authInfo: {
+       isTokenBasedSecurity: true,
+       tokenServicesUrl: tokenServicesUrl
+     }
+   });
+}
+
+function generateToken(username, password, referer) {
   const promise = new Promise((resolve, reject) => {
     let url = _portalUrl + "/sharing/rest//generateToken";
 
@@ -141,20 +210,6 @@ function generateToken(username,password,referer) {
   return promise;
 }
 
-function checkPortalUrl(url) {
-  if (typeof url === "string") {
-    url = url.trim();
-    if (url.substr(url.length - 1) === "/") {
-      url = url.substr(0, url.length - 1);
-    }
-    if (url.substr(url.length - 13) === "/sharing/rest") {
-      url = url.substr(0, url.length - 13);
-    }
-    if (url.length > 0) return url;
-  }
-  return null;
-}
-
 function validateToken(token) {
   const promise = new Promise((resolve, reject) => {
     let url = _portalUrl + "/sharing/rest/portals/self";
@@ -205,6 +260,7 @@ function validateToken(token) {
           // code 498 , message "Invalid token."
           sendInvalid();
         } else  {
+          console.log("tokenOk",token)
           resolve();
         }
       });

@@ -20,12 +20,15 @@ process.on('SIGTERM', () => process.exit(0))
 const Koop = require('koop')
 const koop = new Koop()
 
-// Custom authorization
-const auth = require('./auth/auth')
-koop.register(auth());
-
-// Install the Provider
+// Create the Provider
 const provider = require('./')
+
+// Custom authorization
+const PortalAuth = require('./auth/PortalAuth');
+const auth = PortalAuth({provider: provider});
+if (auth) koop.register(auth);
+
+// Register the Provider
 koop.register(provider)
 
 if (process.env.DEPLOY === 'export') {
