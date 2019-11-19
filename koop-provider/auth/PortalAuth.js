@@ -260,7 +260,6 @@ function validateToken(token) {
           // code 498 , message "Invalid token."
           sendInvalid();
         } else  {
-          console.log("tokenOk",token)
           resolve();
         }
       });
