@@ -32,10 +32,6 @@ function auth(options = {}) {
     v = authConfig.useHttp;
     if (typeof v === "boolean") _useHttp = v;
 
-    acceptUntrustedCertificates = false;
-    v = authConfig.acceptUntrustedCertificates;
-    if (typeof v === "boolean" && v) acceptUntrustedCertificates = true;
-
     if (_portalUrl) {
       _authOn = true;
       if (provider && Controller) {
@@ -45,11 +41,6 @@ function auth(options = {}) {
           handler: "featureServerRestInfo"
         });
         Controller.prototype.featureServerRestInfo = featureServerRestInfo.bind(Controller);
-        if (_tokenServicesUrl && acceptUntrustedCertificates) {
-          // this is dangerous and should only be done in development mode
-          console.log("WARNING: portalTokenAuthentication.acceptUntrustedCertificates",true);
-          process.env["NODE_TLS_REJECT_UNAUTHORIZED"] = "0";
-        }
       }
     }
 
