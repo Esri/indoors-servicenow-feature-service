@@ -24,8 +24,8 @@ const koop = new Koop()
 const provider = require('./')
 
 // Custom authorization
-const PortalAuth = require('./auth/PortalAuth');
-const auth = PortalAuth({provider: provider});
+const portalAuth = require('./auth/portal-auth');
+const auth = portalAuth({provider: provider});
 if (auth) koop.register(auth);
 
 // Register the Provider

@@ -1,4 +1,25 @@
-{
+/*
+
+For the password, you can set it directly in the json structure below:
+    "password": "mypassword",
+
+// Or obtain it from an environment variable
+let password = process.env.SERVICENOW_PASSWORD;
+
+// Or from a text file
+const fs = require("fs");
+let password = fs.readFileSync("/myfile.txt");
+
+// Or from a json file
+let password = JSON.parse(fs.readFileSync("/myfile.json")).password;
+
+Then in the json structure below use:
+    "password": password,
+
+*/
+
+const config = {
+
   "servicenow": {
     "url": "https://example.service-now.com",
     "username": "",
@@ -46,4 +67,7 @@
       }
     }
   }
-}
+
+};
+
+module.exports = config;
