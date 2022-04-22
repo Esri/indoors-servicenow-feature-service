@@ -467,9 +467,9 @@ class ServiceNowLocationLoader(object):
         try:
             if field_list is not None:
                 fields = arcpy.ListFields(layer)
-                field_names = [field.name for field in fields]
+                field_names = [field.name.lower() for field in fields]
                 for field_name in field_list:
-                    if field_name not in field_names:
+                    if field_name.lower() not in field_names:
                         parameter.setErrorMessage("{0} field not found in {1}.".format(field_name, arcpy.Describe(layer).name))
                         return False
             return True
